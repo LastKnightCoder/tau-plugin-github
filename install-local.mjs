@@ -36,7 +36,7 @@ try {
   zip.extractAllTo(staging, false);
   await rename(path.join(staging, manifest.id), target);
   console.log(
-    `已安装：${target}\n在 Tau 插件管理中刷新列表并启用，然后通过 Ctrl+K 执行“打开独立计数插件”。`
+    `已安装：${target}\n在 Tau 插件管理中刷新列表并启用“${manifest.name}”。`
   );
 } finally {
   await rm(staging, { recursive: true, force: true });
