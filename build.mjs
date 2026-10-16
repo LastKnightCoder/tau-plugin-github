@@ -44,7 +44,7 @@ try {
   for (const output of Object.values(result.metafile.outputs)) {
     for (const dependency of output.imports) {
       if (dependency.external && !shared.includes(dependency.path))
-        throw new Error(`未支持的宿主模块：${dependency.path}`);
+        throw new Error(`插件构建包含未支持的外部依赖：${dependency.path}`);
     }
   }
   const styles = Object.keys(result.metafile.outputs).some(file => file.endsWith("main.css"));
