@@ -19,20 +19,25 @@ const zip = new AdmZip(path.resolve("dist", `${manifest.id}-${manifest.version}.
 const entries = zip.getEntries().filter(entry => !entry.isDirectory);
 const allowed = ["manifest.json", "main.js", "main.css"];
 for (const entry of entries) {
-  if (!allowed.some(file => entry.entryName === `${manifest.id}/${file}`)) throw new Error("ZIP 包含非约定文件");
+  if (!allowed.some(file => entry.entryName === `${manifest.id}/${file}`))
+    throw new Error("ZIP 包含非约定文件");
 }
 const packaged = JSON.parse(zip.readAsText(`${manifest.id}/manifest.json`));
-if (packaged.id !== manifest.id || packaged.version !== manifest.version) throw new Error("ZIP 与当前 manifest 不一致，请重新构建");
+if (packaged.id !== manifest.id || packaged.version !== manifest.version)
+  throw new Error("ZIP 与当前 manifest 不一致，请重新构建");
 for (const file of ["main.js", ...(packaged.styles ? ["main.css"] : [])]) {
   const bytes = zip.readFile(`${manifest.id}/${file}`);
-  if (!bytes || createHash("sha256").update(bytes).digest("hex") !== packaged.integrity?.[file]) throw new Error(`产物校验失败：${file}`);
+  if (!bytes || createHash("sha256").update(bytes).digest("hex") !== packaged.integrity?.[file])
+    throw new Error(`产物校验失败：${file}`);
 }
 await mkdir(root, { recursive: true });
 const staging = await mkdtemp(path.join(root, ".installing-"));
 try {
   zip.extractAllTo(staging, false);
   await rename(path.join(staging, manifest.id), target);
-  console.log(`已安装：${target}\n在 Tau 插件管理中刷新列表并启用，然后通过 Ctrl+K 执行“打开独立计数插件”。`);
+  console.log(
+    `已安装：${target}\n在 Tau 插件管理中刷新列表并启用，然后通过 Ctrl+K 执行“打开独立计数插件”。`
+  );
 } finally {
   await rm(staging, { recursive: true, force: true });
 }
