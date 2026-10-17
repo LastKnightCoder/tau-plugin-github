@@ -1,12 +1,12 @@
 # 插件 API
 
-正式编辑器扩展与博客发布见 [EDITOR.md](EDITOR.md)，要求 SDK 0.6.0 与 Tau 0.59.0。作者声明一份 `editorExtensions`，桌面与博客共用同一插件入口。
+本文介绍编写命令、页面、侧边栏、设置、数据存储、网络请求和摘录所需的接口。插件接口从 `@tau/plugins` 导入，界面组件从 `@tau/ui` 导入。所述能力需要 Tau 0.59.0 或更高版本。
 
-编译与转换服务见 [SERVICES.md](SERVICES.md)。本模板已锁定 SDK 0.6.0，本文及扩展章节均以该版本和 Tau 0.59.0 为基准。
+想在文档里添加自定义块，见 [EDITOR.md](EDITOR.md)；需要编译 Tailwind、Typst、Markdown 等内容，见 [SERVICES.md](SERVICES.md)。
 
-本文介绍编写命令、页面、设置和数据存储所需的接口。示例适用于本模板锁定的 SDK 版本。插件接口从 `@tau/plugins` 导入，界面组件从 `@tau/ui` 导入。
+AI 功能声明、用户模型分配、流式对话、取消与统一用量审计见 [AI.md](AI.md)（SDK 0.7.0 及以上）。
 
-阅读顺序：先了解[入口与生命周期](#入口与生命周期)，再按功能查阅[命令](#命令)、[存储](#私有存储)、[页面](#页面)、[设置](#设置)、[网络请求](#网络请求)和[资源清理](#资源清理)。完整可运行示例见 `src/index.tsx`。
+阅读顺序：先了解[入口与生命周期](#入口与生命周期)，再按功能查阅[命令](#命令)、[存储](#私有存储)、[页面](#页面)、[设置](#设置)、[网络请求](#网络请求)、[摘录](#摘录)、[材料动作](#材料动作)和[资源清理](#资源清理)。完整可运行示例见 `src/index.tsx`。
 
 ## manifest
 
@@ -83,6 +83,10 @@ export default definePlugin({
 | `settings`    | `PluginSettings`                       | 注册并打开设置区域                     |
 | `sidebar`     | `PluginSidebar`                        | 创建侧边栏分组、注册页面入口           |
 | `fetch`       | `typeof fetch`                         | 发起与插件生命周期关联的网络请求       |
+| `services`    | `PluginServices`                       | 编译与转换服务，见 SERVICES.md         |
+| `ai`          | `PluginAI`                             | 使用用户分配的模型，见 AI.md           |
+| `excerpts`    | `PluginExcerpts`                       | 把外部划线、标注写为 Tau 摘录          |
+| `materials`   | `PluginMaterials`                      | 获取「转为卡片」等材料动作             |
 | `register`    | `(resource: Disposable) => Disposable` | 托管需要清理的资源                     |
 
 不要缓存上下文供下次启用使用。旧上下文失效后调用 storage、注册功能或打开页面会报错。
@@ -187,7 +191,7 @@ export default definePlugin({
 
 ## 侧边栏
 
-SDK 0.2.0 起提供 `context.sidebar`，需要支持插件侧边栏的 Tau 客户端。条目关联已有页面，点击自动打开并随当前页面高亮；停用后入口消失，恢复启用时重新注册。
+`context.sidebar` 为页面添加侧边栏入口。条目关联已有页面，点击自动打开并随当前页面高亮；停用后入口消失，恢复启用时重新注册。
 
 ### 注册到已有分组
 
@@ -230,7 +234,7 @@ context.sidebar.registerItem({ id: "counter", title: "计数", group: group.id, 
 | -------- | ------------------------- | ----------------------------------------------------------- |
 | `id`     | `string`                  | 插件内唯一条目 ID                                           |
 | `title`  | `string`                  | 非空的入口名称                                              |
-| `icon`   | `PluginSidebarIcon`，可选 | SVG 图标组件，省略时使用默认插件图标（SDK 0.3.0 起）        |
+| `icon`   | `PluginSidebarIcon`，可选 | SVG 图标组件，省略时使用默认插件图标                        |
 | `group`  | `string`，可选            | 公开分组常量或本插件分组句柄的 id；缺省或不存在时归入“插件” |
 | `page`   | `PluginPageHandle`        | 本插件本次启用注册的有效页面句柄                            |
 | `params` | `PluginPageParams`，可选  | 点击时传给页面的参数，缺省为空对象                          |
@@ -239,7 +243,7 @@ context.sidebar.registerItem({ id: "counter", title: "计数", group: group.id, 
 
 ### 自定义图标
 
-SDK 0.3.0 起，`icon` 接收组件本身，例如 `icon: CounterIcon`，不是 `<CounterIcon />`、图片地址或图标名称字符串。模板的 `src/CounterIcon.tsx` 是可直接修改的 SVG 示例：
+`icon` 接收组件本身，例如 `icon: CounterIcon`，不是 `<CounterIcon />`、图片地址或图标名称字符串。模板的 `src/CounterIcon.tsx` 是可直接修改的 SVG 示例：
 
 ```tsx
 import type { PluginSidebarIconProps } from "@tau/plugins";
@@ -265,7 +269,7 @@ export function WaterDropIcon({ size = 24, strokeWidth = 2, ...props }: PluginSi
 
 `PluginSidebarIconProps` 包含标准 SVG 属性及可选的 `size: number | string`。侧边栏传入 `size`、`strokeWidth`、`className` 和 `aria-hidden`，图标应透传这些属性；用 `currentColor` 跟随明暗主题及选中颜色，不写死宽高或颜色。展开和收起状态使用同一个图标，图标不承担按钮点击或业务状态管理。
 
-也可以使用满足该属性约定的 React 图标库组件，依赖通过 pnpm 添加；无须额外配置打包。使用自定义图标需要更新到支持图标的 Tau 客户端，较旧的侧边栏实现会显示默认插件图标。
+也可以使用满足该属性约定的 React 图标库组件，依赖通过 pnpm 添加，无须额外配置打包。
 
 提前调用条目的 `dispose()` 会移除入口；注销页面也会隐藏关联入口。提前注销分组后，剩余条目归入“插件”；当最后一个条目移除后，空分组不显示。注册重复 ID 会报错，不覆盖已有条目。插件只能管理自己注册的分组和条目，不能向其他插件的分组插入，也不能引用其他插件或上一次启用的页面句柄。
 
@@ -326,6 +330,118 @@ context.commands.register({
 
 将示例地址替换成自己的服务。HTTP 4xx/5xx 不会自动抛出异常，需检查 `response.ok`。请求仍受运行环境的网络与跨域规则影响，不保证任意地址均可访问。不要把私密令牌写进源码；请求结果进入存储前也要校验数据。
 
+## 摘录
+
+如果你的插件从外部服务读取划线、标注或收藏（读书笔记、网页高亮、文献批注等），可以把它们写成 Tau 的摘录。写入后，用户能在全局搜索和 AI 对话中找到它们、在文档中引用，也能转为卡片或问题。摘录属于用户：插件停用或卸载后，已写入的摘录和引用都会保留。
+
+### 注册提供方
+
+写入前，先在 `activate` 中注册一次提供方：
+
+```ts
+const pages = { book: context.pages.register({ id: "book", title: "书籍", component: Book }) };
+
+context.excerpts.register({
+  label: "我的读书笔记",
+  open: ({ sourceKey, externalId }) => pages.book.open({ bookId: sourceKey, noteId: externalId }),
+});
+```
+
+| 字段    | 说明                                                                                       |
+| ------- | ------------------------------------------------------------------------------------------ |
+| `label` | 显示为摘录的来源名称，1–100 字；插件停用后仍用它显示来源                                   |
+| `open`  | 可选。用户点击「打开原处」时调用，通常打开插件自己的页面并定位；省略时打开条目或来源的 url |
+
+每次启用只能注册一次，未注册就写入会报错。
+
+### 写入
+
+摘录按**来源**（一本书、一个网页、一篇文献）分组写入，有两种方式：
+
+```ts
+const source = { key: "book-42", title: "设计心理学", url: "https://example.com/books/42" };
+
+// 全量：以这批条目为准，不在其中的已有条目会被移除
+await context.excerpts.replace(source, [
+  {
+    externalId: "n1",
+    quote: "好的设计是让人一眼就知道怎么用。",
+    location: "第 1 章",
+    time: 1760000000000,
+  },
+  { externalId: "n2", quote: "示能决定了可能的操作。", note: "和交互设计课的观点一致" },
+]);
+
+// 增量：只新增、更新或移除指定条目
+await context.excerpts.patch(source, {
+  upsert: [{ externalId: "n3", quote: "反馈要及时。" }],
+  remove: ["n1"],
+});
+```
+
+两者都返回 `{ inserted, updated, deleted }`。外部服务能一次给出某个来源的全部条目时用 `replace`；只拿到变化时用 `patch`。`replace` 传入空数组表示整个来源已不存在。
+
+| 来源字段 | 说明                                                  |
+| -------- | ----------------------------------------------------- |
+| `key`    | 来源在本插件内的稳定标识，必填，最长 512 字           |
+| `title`  | 显示的来源标题，最长 500 字                           |
+| `url`    | 可选，http(s) 地址；条目没有自己的 url 时用它打开原处 |
+
+| 条目字段     | 说明                                                                                      |
+| ------------ | ----------------------------------------------------------------------------------------- |
+| `externalId` | 条目在本插件内的唯一标识，必填，最长 512 字。**它不变，Tau 中对这条摘录的引用就一直有效** |
+| `quote`      | 摘录原文，必填，最长 20000 字                                                             |
+| `note`       | 用户写的想法或批注，可选                                                                  |
+| `location`   | 给人看的位置，如「第 3 章 · 标题」「第 12 页」，最长 500 字                               |
+| `url`        | 可选，条目级 http(s) 深链，优先于来源 url                                                 |
+| `anchor`     | 可选，插件自己的定位数据（JSON 对象，序列化后不超过 8000 字）；Tau 只保存、不解读         |
+| `color`      | 可选，划线颜色，最长 50 字                                                                |
+| `time`       | 可选，在原服务中的创建时间（毫秒时间戳）                                                  |
+
+使用约束：
+
+- `externalId` 由你从外部数据中稳定地生成（例如原服务的笔记 ID）。改变生成规则会让旧摘录被移除、用户的引用失效。
+- 被移除的摘录不会真正删除，原文仍保留、引用仍能显示；以后同一个 `externalId` 再次写入时会恢复。
+- 单次写入最多 20000 条，同一批中 `externalId` 不能重复，同一次 `patch` 不能同时写入和移除同一条。任一条不合法时整批拒绝。
+- 外部服务分页拉取时，确认拿到完整列表后再调用 `replace`；用不完整的结果覆盖会误移除条目。
+
+### 读回
+
+```ts
+const sources = await context.excerpts.sources(); // [{ key, title, count }]
+const entries = await context.excerpts.items("book-42");
+```
+
+`sources()` 列出本插件写入过的来源，`count` 为未移除的条目数。`items(sourceKey)` 返回该来源的全部条目，包括已移除的（`deleted: true`），可以用来离线展示或与外部数据比对。每个条目带有 `ref`，用于下文的材料动作。
+
+## 材料动作
+
+摘录等内容在 Tau 中统称「材料」。`context.materials.actions(ref)` 返回 Tau 当前可以对这条材料执行的操作，例如「转为卡片」「转为问题」，适合放在插件自己的列表或详情页里：
+
+```tsx
+import { Button } from "@tau/ui";
+import type { PluginContext, PluginMaterialAction, PluginMaterialRef } from "@tau/plugins";
+import { useEffect, useState } from "react";
+
+function NoteActions({ context, target }: { context: PluginContext; target: PluginMaterialRef }) {
+  const [actions, setActions] = useState<PluginMaterialAction[]>([]);
+  useEffect(() => {
+    void context.materials.actions(target).then(list => {
+      if (!context.signal.aborted) setActions(list);
+    });
+  }, [context, target]);
+  return actions.map(action => (
+    <Button key={action.id} variant="ghost" onClick={() => void action.run()}>
+      {action.label}
+    </Button>
+  ));
+}
+```
+
+- `ref` 来自 `excerpts.items()` 返回的条目，把它原样传回即可，不要自己构造或解析其中的字段。
+- 每个动作有 `id`、`label` 和 `run()`。直接用 `label` 作为按钮文字，不要按 `id` 写死列表：Tau 以后可能增加新的动作。
+- 动作执行后由 Tau 自己给出成功或失败提示，插件不需要再弹提示。
+
 ## 资源清理
 
 `Disposable` 的签名为 `{ dispose(): void | Promise<void> }`。
@@ -377,8 +493,6 @@ export function Help() {
 
 自定义样式放入 CSS 并在入口导入。为选择器加插件专属前缀，避免影响其他界面；颜色使用 `var(--tau-accent)` 等主题变量。不要依赖客户端为插件源码生成 Tailwind 样式。
 
-## 能力范围与升级
-
-上述命令、页面、侧边栏、设置、私有存储、网络和清理接口是本模板的开发范围。SDK 类型中还包含编辑器扩展接口，但目前仅用于插件工作台，不会自动作用到普通笔记编辑器；本文不将其作为普通笔记扩展的可用能力。
+## 依赖与升级
 
 添加依赖使用 `pnpm add <包名>`；升级 SDK 或 React 前先确认兼容性，并完整验证启用、停用和重启流程。保留 `pnpm-lock.yaml`，以便其他开发者复现依赖版本。
