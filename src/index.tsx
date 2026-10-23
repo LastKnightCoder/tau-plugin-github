@@ -1,5 +1,6 @@
+import { MobileSettings } from "./mobile-settings";
 import { useState } from "react";
-import { definePlugin, type PluginSettingsProps } from "@tau/plugins";
+import { definePlugin, usePluginEnvironment, type PluginSettingsProps } from "@tau/plugins";
 import { Button, Input, SettingRow } from "@tau/ui";
 import { createGithubSyncProvider } from "./sync";
 
@@ -7,8 +8,7 @@ declare const __PLUGIN_META__: { id: string; name: string; version: string };
 
 function GithubSettings({ syncConfig }: PluginSettingsProps) {
   const value = syncConfig?.value;
-  const fields =
-    value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const fields = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const [config, setConfig] = useState(() => ({
     owner: String(fields.owner ?? ""),
     repo: String(fields.repo ?? ""),
@@ -27,7 +27,7 @@ function GithubSettings({ syncConfig }: PluginSettingsProps) {
     setError("");
     setSaved(false);
     try {
-      await syncConfig.save(config);
+      await syncConfig.save({ ...fields, ...config });
       setSaved(true);
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "保存失败");
@@ -49,7 +49,7 @@ function GithubSettings({ syncConfig }: PluginSettingsProps) {
           autoComplete="off"
           spellCheck={false}
           disabled={saving}
-          onChange={(event) => {
+          onChange={event => {
             setSaved(false);
             setConfig({ ...config, owner: event.target.value });
           }}
@@ -67,7 +67,7 @@ function GithubSettings({ syncConfig }: PluginSettingsProps) {
           autoComplete="off"
           spellCheck={false}
           disabled={saving}
-          onChange={(event) => {
+          onChange={event => {
             setSaved(false);
             setConfig({ ...config, repo: event.target.value });
           }}
@@ -85,7 +85,7 @@ function GithubSettings({ syncConfig }: PluginSettingsProps) {
           autoComplete="off"
           spellCheck={false}
           disabled={saving}
-          onChange={(event) => {
+          onChange={event => {
             setSaved(false);
             setConfig({ ...config, branch: event.target.value });
           }}
@@ -102,7 +102,7 @@ function GithubSettings({ syncConfig }: PluginSettingsProps) {
           autoComplete="off"
           spellCheck={false}
           disabled={saving}
-          onChange={(event) => {
+          onChange={event => {
             setSaved(false);
             setConfig({ ...config, pathPrefix: event.target.value });
           }}
@@ -120,7 +120,7 @@ function GithubSettings({ syncConfig }: PluginSettingsProps) {
           autoComplete="off"
           spellCheck={false}
           disabled={saving}
-          onChange={(event) => {
+          onChange={event => {
             setSaved(false);
             setConfig({ ...config, token: event.target.value });
           }}
@@ -151,6 +151,15 @@ function GithubSettings({ syncConfig }: PluginSettingsProps) {
   );
 }
 
+function SettingsView(props: PluginSettingsProps) {
+  const environment = usePluginEnvironment();
+  return environment.platform === "desktop" ? (
+    <GithubSettings {...props} />
+  ) : (
+    <MobileSettings {...props} />
+  );
+}
+
 export default definePlugin({
   ...__PLUGIN_META__,
   create: () => ({
@@ -158,13 +167,13 @@ export default definePlugin({
       context.sync.register({
         id: context.pluginId,
         name: "GitHub",
-        create: (config) => createGithubSyncProvider(config, context.fetch),
+        create: config => createGithubSyncProvider(config, context.fetch),
       });
       context.settings.register({
         id: "sync",
         title: "GitHub 同步存储",
         target: "sync",
-        component: GithubSettings,
+        component: SettingsView,
       });
     },
   }),
