@@ -4,7 +4,7 @@
   "description": "使用 GitHub 仓库同步数据，在客户端同步设置中配置。",
   "categories": ["sync"],
   "keywords": ["GitHub", "备份"],
-  "version": "0.3.1",
+  "version": "0.3.2",
   "targets": {
     "desktop": {
       "minAppVersion": "0.59.4"
