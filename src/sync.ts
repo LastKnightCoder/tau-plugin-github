@@ -1,8 +1,4 @@
-import type {
-  JsonValue,
-  RemoteFileInfo,
-  SyncProvider,
-} from "@tau/plugins/sync";
+import type { JsonValue, RemoteFileInfo, SyncProvider } from "@tau/plugins/sync";
 
 interface Config {
   token: string;
@@ -43,19 +39,14 @@ function encode(bytes: Uint8Array) {
   return btoa(binary);
 }
 function isMissing(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    error.status === 404
-  );
+  return typeof error === "object" && error !== null && "status" in error && error.status === 404;
 }
 
 class GithubSyncProvider implements SyncProvider {
   private readonly prefix: string;
   constructor(
     private readonly config: Config,
-    private readonly fetch: typeof globalThis.fetch,
+    private readonly fetch: typeof globalThis.fetch
   ) {
     this.prefix = config.pathPrefix.replace(/^\/+|\/+$/g, "");
   }
@@ -65,9 +56,10 @@ class GithubSyncProvider implements SyncProvider {
   private async request(
     path: string,
     body?: Record<string, string>,
+    objectOnly = false
   ): Promise<Entry | Entry[]> {
     const url = new URL(
-      `https://api.github.com/repos/${encodeURIComponent(this.config.owner)}/${encodeURIComponent(this.config.repo)}/contents${path ? "/" + path.split("/").map(encodeURIComponent).join("/") : ""}`,
+      `https://api.github.com/repos/${encodeURIComponent(this.config.owner)}/${encodeURIComponent(this.config.repo)}/contents${path ? "/" + path.split("/").map(encodeURIComponent).join("/") : ""}`
     );
     if (!body) url.searchParams.set("ref", this.config.branch);
     const response = await this.fetch(url, {
@@ -75,14 +67,17 @@ class GithubSyncProvider implements SyncProvider {
       headers: {
         Authorization: `token ${this.config.token}`,
         "Content-Type": "application/json",
+        Accept: objectOnly ? "application/vnd.github.object+json" : "application/vnd.github+json",
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(300000),
     });
-    if (response.status !== 200 && response.status !== 201)
+    if (response.status !== 200 && response.status !== 201) {
+      await response.body?.cancel().catch(() => undefined);
       throw Object.assign(new Error(`GitHub请求失败：${response.status}`), {
         status: response.status,
       });
+    }
     return response.json();
   }
   private async put(name: string, bytes: Uint8Array, createOnly: boolean) {
@@ -95,7 +90,7 @@ class GithubSyncProvider implements SyncProvider {
       };
       if (!createOnly) {
         try {
-          const existing = await this.request(path);
+          const existing = await this.request(path, undefined, true);
           if (Array.isArray(existing) || typeof existing.sha !== "string")
             throw new Error("GitHub目标不是文件");
           body.sha = existing.sha;
@@ -116,17 +111,30 @@ class GithubSyncProvider implements SyncProvider {
     return this.put(name, bytes, true);
   }
   async downloadFile(name: string): Promise<Uint8Array> {
-    const entry = await this.request(this.path(name));
-    if (Array.isArray(entry) || typeof entry.content !== "string")
-      throw new Error("GitHub未返回Base64文件内容");
-    return Uint8Array.from(atob(entry.content.replace(/\n/g, "")), (char) =>
-      char.charCodeAt(0),
+    const path = this.path(name);
+    const url = new URL(
+      `https://api.github.com/repos/${encodeURIComponent(this.config.owner)}/${encodeURIComponent(this.config.repo)}/contents/${path.split("/").map(encodeURIComponent).join("/")}`
     );
+    url.searchParams.set("ref", this.config.branch);
+    const response = await this.fetch(url, {
+      headers: {
+        Authorization: `token ${this.config.token}`,
+        Accept: "application/vnd.github.raw+json",
+      },
+      signal: AbortSignal.timeout(300000),
+    });
+    if (response.status !== 200) {
+      await response.body?.cancel().catch(() => undefined);
+      throw Object.assign(new Error(`GitHub请求失败：${response.status}`), {
+        status: response.status,
+      });
+    }
+    return new Uint8Array(await response.arrayBuffer());
   }
   async fileExists(name: string) {
     try {
-      await this.downloadFile(name);
-      return true;
+      const entry = await this.request(this.path(name), undefined, true);
+      return !Array.isArray(entry) && entry.type === "file";
     } catch (error) {
       if (isMissing(error)) return false;
       throw error;
@@ -166,7 +174,7 @@ class GithubSyncProvider implements SyncProvider {
 }
 export function createGithubSyncProvider(
   config: JsonValue,
-  fetch: typeof globalThis.fetch,
+  fetch: typeof globalThis.fetch
 ): SyncProvider {
   return new GithubSyncProvider(parse(config), fetch);
 }
