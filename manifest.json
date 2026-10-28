@@ -4,7 +4,7 @@
   "description": "使用 GitHub 仓库同步数据，在插件设置中填写令牌与仓库。",
   "categories": ["sync"],
   "keywords": ["GitHub", "备份"],
-  "version": "0.3.3",
+  "version": "0.3.4",
   "targets": {
     "desktop": {
       "minAppVersion": "0.60.2"
