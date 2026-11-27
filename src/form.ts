@@ -1,4 +1,6 @@
-import type { ProviderForm, ProviderFormValues } from "@tau/plugins";
+import type { ProviderFormDeclaration, ProviderFormValues } from "@tau/plugins";
+
+import { messages } from "./i18n";
 
 type Fetch = typeof globalThis.fetch;
 
@@ -23,35 +25,37 @@ async function login(fetch: Fetch, values: ProviderFormValues, signal: AbortSign
 export function createGithubForm(
   fetch: Fetch,
   options: { pathPlaceholder: string; upload: boolean }
-): ProviderForm {
+): ProviderFormDeclaration {
   return {
     groups: [
       {
-        title: "账号",
-        description: "GitHub Personal Access Token，需要仓库读写权限",
-        fields: [{ key: "token", label: "访问令牌", type: "secret" }],
+        title: messages.ref("account.title"),
+        description: messages.ref("account.description"),
+        fields: [{ key: "token", label: messages.ref("account.token"), type: "secret" }],
       },
       {
-        title: "存储位置",
-        ...(options.upload ? { description: "图床请选公开仓库，私有仓库的图片地址无法直接访问" } : {}),
+        title: messages.ref("location.title"),
+        ...(options.upload ? { description: messages.ref("location.publicHint") } : {}),
         fields: [
           {
             key: "owner",
-            label: "仓库所有者",
+            label: messages.ref("owner.label"),
             type: "text",
             optional: true,
-            description: "留空则使用令牌所属账号",
-            placeholder: "用户名或组织名",
+            description: messages.ref("owner.description"),
+            placeholder: messages.ref("owner.placeholder"),
             summary: true,
           },
           {
             key: "repo",
-            label: "仓库",
+            label: messages.ref("repository.label"),
             type: "remote-choice",
             summary: true,
             dependsOn: ["owner"],
             load: async (values, signal) => {
-              const owner = (values.owner || (await login(fetch, values, signal)).login).toLowerCase();
+              const owner = (
+                values.owner || (await login(fetch, values, signal)).login
+              ).toLowerCase();
               const items = await request(
                 fetch,
                 "https://api.github.com/user/repos?per_page=100&sort=updated",
@@ -63,13 +67,15 @@ export function createGithubForm(
                 .filter(item => String(item.owner?.login ?? "").toLowerCase() === owner)
                 .map(item => ({
                   value: String(item.name),
-                  description: item.private ? "私有" : "公开",
+                  description: messages.ref(
+                    item.private ? "repository.private" : "repository.public"
+                  ),
                 }));
             },
           },
           {
             key: "branch",
-            label: "分支",
+            label: messages.ref("branch.label"),
             type: "remote-choice",
             placeholder: "main",
             dependsOn: ["repo"],
@@ -88,7 +94,7 @@ export function createGithubForm(
           },
           {
             key: "pathPrefix",
-            label: "目录",
+            label: messages.ref("path.label"),
             type: "text",
             optional: true,
             placeholder: options.pathPlaceholder,
@@ -97,17 +103,17 @@ export function createGithubForm(
             ? ([
                 {
                   key: "publicBaseUrl",
-                  label: "公开地址前缀",
+                  label: messages.ref("publicBase.label"),
                   type: "url",
                   optional: true,
-                  description: "使用自定义域名或 CDN 时填写",
+                  description: messages.ref("publicBase.description"),
                 },
                 {
                   key: "email",
-                  label: "提交邮箱",
+                  label: messages.ref("email.label"),
                   type: "text",
                   optional: true,
-                  description: "留空则使用账号公开邮箱",
+                  description: messages.ref("email.description"),
                 },
               ] as const)
             : []),

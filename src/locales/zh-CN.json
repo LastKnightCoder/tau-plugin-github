@@ -1,0 +1,19 @@
+{
+  "account.title": "账号",
+  "account.description": "GitHub Personal Access Token，需要仓库读写权限",
+  "account.token": "访问令牌",
+  "location.title": "存储位置",
+  "location.publicHint": "图床请选公开仓库，私有仓库的图片地址无法直接访问",
+  "owner.label": "仓库所有者",
+  "owner.description": "留空则使用令牌所属账号",
+  "owner.placeholder": "用户名或组织名",
+  "repository.label": "仓库",
+  "repository.private": "私有",
+  "repository.public": "公开",
+  "branch.label": "分支",
+  "path.label": "目录",
+  "publicBase.label": "公开地址前缀",
+  "publicBase.description": "使用自定义域名或 CDN 时填写",
+  "email.label": "提交邮箱",
+  "email.description": "留空则使用账号公开邮箱"
+}

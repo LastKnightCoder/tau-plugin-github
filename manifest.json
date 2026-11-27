@@ -4,16 +4,29 @@
   "description": "使用 GitHub 仓库同步数据，在插件设置中填写令牌与仓库。",
   "categories": ["sync"],
   "keywords": ["GitHub", "备份"],
-  "version": "0.3.4",
+  "locales": ["zh-CN", "zh-TW", "en-US"],
+  "i18n": {
+    "zh-TW": {
+      "name": "GitHub 同步儲存",
+      "description": "使用 GitHub 儲存庫同步資料，在外掛設定中填寫存取權杖與儲存庫。",
+      "keywords": ["GitHub", "備份"]
+    },
+    "en-US": {
+      "name": "GitHub Sync Storage",
+      "description": "Sync your Tau data with a GitHub repository. Configure your access token and repository in plugin settings.",
+      "keywords": ["GitHub", "backup"]
+    }
+  },
+  "version": "0.3.5",
   "targets": {
     "desktop": {
-      "minAppVersion": "0.60.2"
+      "minAppVersion": "0.68.0"
     },
     "android": {
-      "minAppVersion": "0.2.9"
+      "minAppVersion": "0.6.0"
     },
     "ios": {
-      "minAppVersion": "0.2.9"
+      "minAppVersion": "0.6.0"
     }
   }
 }

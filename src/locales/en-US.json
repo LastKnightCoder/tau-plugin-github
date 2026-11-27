@@ -1,0 +1,19 @@
+{
+  "account.title": "Account",
+  "account.description": "GitHub Personal Access Token with repository read and write permissions",
+  "account.token": "Access token",
+  "location.title": "Storage location",
+  "location.publicHint": "Choose a public repository for image hosting. Images in private repositories cannot be accessed directly.",
+  "owner.label": "Repository owner",
+  "owner.description": "Leave empty to use the token’s account",
+  "owner.placeholder": "Username or organization",
+  "repository.label": "Repository",
+  "repository.private": "Private",
+  "repository.public": "Public",
+  "branch.label": "Branch",
+  "path.label": "Directory",
+  "publicBase.label": "Public URL prefix",
+  "publicBase.description": "Set this when using a custom domain or CDN",
+  "email.label": "Commit email",
+  "email.description": "Leave empty to use the account’s public email"
+}

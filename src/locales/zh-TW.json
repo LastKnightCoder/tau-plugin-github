@@ -1,0 +1,19 @@
+{
+  "account.title": "帳號",
+  "account.description": "GitHub Personal Access Token，需要儲存庫讀寫權限",
+  "account.token": "存取權杖",
+  "location.title": "儲存位置",
+  "location.publicHint": "圖床請選擇公開儲存庫，私人儲存庫的圖片網址無法直接存取",
+  "owner.label": "儲存庫擁有者",
+  "owner.description": "留空則使用權杖所屬帳號",
+  "owner.placeholder": "使用者或組織名稱",
+  "repository.label": "儲存庫",
+  "repository.private": "私人",
+  "repository.public": "公開",
+  "branch.label": "分支",
+  "path.label": "目錄",
+  "publicBase.label": "公開網址前綴",
+  "publicBase.description": "使用自訂網域或 CDN 時填寫",
+  "email.label": "提交電子郵件",
+  "email.description": "留空則使用帳號的公開電子郵件"
+}
